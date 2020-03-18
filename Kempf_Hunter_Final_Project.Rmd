@@ -1,0 +1,123 @@
+---
+title: "GLM Final Project"
+author: "Hunter Kempf"
+date: "3/1/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/Users/hk720x/Developer/MSDS/GLM/Final Project')
+```
+
+# Introduction
+The semester project gives you the chance to apply the knowledge and skills you will learn in the course in a way that mimics the ways you can expect to use logistic regression modeling in a real-world setting.
+
+For the project, you will choose one data set from the two listed below and perform a logistic regression analysis. Specifically, you will build a regression model and report on the model statistics and diagnostics. Your final deliverable for the project will be an R Markdown file. The file will contain the analyses detailed in each step with 5-7 written bullet points. Basically, pretend you are presenting to a non-technical audience, and the bullet points would serve as a script outline for your explanation. By non-technical I mean an audience who knows things like “a p-value less than 0.05 mean statistical significance” but cannot really explain the underlying concepts in great detail.
+
+You can choose one of two different data sets to complete the project, either the wine quality data set first analyzed during week 3 or the data set diabetes from
+the faraway package, which we do not cover elsewhere in the course. Here are the details for each. Remember, you just need to choose one, not both.
+
+* wine quality: rather than building a model to discriminate between white and red wine,
+for the project you may collapse the quality variable into a binary response equal to 1
+(high) if quality > 5 and 0 (low) if quality <= 5. Build a logistic regression model to
+explain what factors are related to a high rating.
+
+* diabetes: the help file for the data states that glycosolated hemoglobin (denoted
+as glyhbin the data) greater than 7.0 is usually taken as a positive diagnosis of diabetes. Thus, collapse glyhb into a binary response equal to 1 if gly > 7 (positive) and 0 if gly <= 7 (negative). Build a logistic regression model to explain what factors are related to a positive diagnosis.
+
+## Load Libraries 
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+## Read and Prepare Dataset
+
+I am chosing the wine quality dataset for my analysis.
+
+```{r message=FALSE, warning=FALSE}
+wine_red <- read_delim('winequality-red.csv',delim = ';') %>% 
+                    mutate(quality=factor(ifelse(quality>5,1,0),labels = c('low','high')))
+```
+
+
+# Project Steps:
+
+The project consists of five steps, which you will work on throughout the second half of the semester. The steps you complete each week will accumulate in your R Markdown file, due at the end of the course. You will receive credit for completing drafts of Steps 1- 5 according to the schedule below. Each of these steps are described in greater detail in the week they are due.
+
+## Step 1: Exploratory Data Analysis (EDA)
+
+* Task: Construct interleaved histograms and scatterplots to explore the relation between the predictors and response. Specifically, choose two predictors and make an interleaved histogram and scatterplot for each. Thus, you should construct four total graphs.
+
+* Deliverables: 
+  + Your code in Markdown should produce the plots.
+  + Your 5-7 bullet points should explain the graphs including the axes and
+what each plot means. Remember, interleaved histograms may be easy for you but maybe not so for others.
+
+### Alcohol Percentage
+
+```{r}
+ggplot(
+  data = wine_red,
+  aes(x=alcohol,fill=quality)
+) + geom_histogram(position = 'dodge',bins = 30) +
+  ggtitle("Histogram of Wine Quality by Alcohol Percent")+
+  xlab("Alcohol %")
+```
+
+### Total Sulfur Dioxide 
+
+```{r}
+ggplot(
+  data = wine_red,
+  aes(x=`total sulfur dioxide`,fill=quality)
+) + geom_histogram(position = 'dodge',bins = 30) +
+  ggtitle("Histogram of Wine Quality by Total Sulfur Dioxide") +
+  xlab("Total Sulfur Dioxide")
+```
+
+### Scatterplot of Alcohol Percentage and Total Sulfur Dioxide
+
+```{r}
+ggplot(
+  data = wine_red,
+  aes(x=`total sulfur dioxide`,y=alcohol,color=quality)
+) + geom_point(alpha=.5) +
+  ggtitle("Histogram of Wine Quality by Total Sulfur Dioxide") +
+  xlab("Total Sulfur Dioxide")+
+  ylab("Alcohol %")
+```
+
+### Graph Explanations
+
+* Higher Alcohol Percentage is associated with better quality wines
+* Lower Total Sulfur Dioxide is associated with better quality wines
+
+
+## Step 2: Variable Selection
+
+* Task: Perform variable selection via the AIC using the step() function. Your starting model should include all available predictors. The reduced model should be used as your final model for all subsequent steps. Or, if you disagree with the recommended model, you need to indicate why.
+
+* Deliverables:
+  + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
+  + Your bullet points should give a brief explanation of the algorithm and comment on the variables retained/removed from the model. Are the results intuitive?
+  
+## Step 3: Assess Model Fit
+
+* Task: Perform variable selection via the AIC using the step() function. Your starting model should include all available predictors. The reduced model should be used as your final model for all subsequent steps. Or, if you disagree with the recommended model, you need to indicate why.
+
+* Deliverables:
+  + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
+  + Your bullet points should give a brief explanation of the algorithm and comment on the variables retained/removed from the model. Are the results intuitive?
+
+
+
+
+
+
+
+
+
+
