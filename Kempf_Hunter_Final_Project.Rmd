@@ -269,6 +269,7 @@ hl_test
   + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
   + Your bullet points should give practical interpretation of the inferences and explain the process of checking for influential observations.
 
+
 ```{r}
 summary(step_with_splines_model)
 ```
