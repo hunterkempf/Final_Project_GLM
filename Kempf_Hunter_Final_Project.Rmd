@@ -7,7 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = '/Users/hk720x/Developer/MSDS/GLM/Final Project')
+knitr::opts_knit$set(root.dir = '/Users/hunterkempf/Documents/GitHub/Final_Project_GLM')
 ```
 
 # Introduction
@@ -30,6 +30,9 @@ as glyhbin the data) greater than 7.0 is usually taken as a positive diagnosis o
 
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
+library(ROCR) # <-- for AUC 
+library(ResourceSelection) # <-- for Hosmer-Lemeshow Goodness of Fit Test
+library(splines) # <-- for splines 
 ```
 
 
@@ -40,6 +43,7 @@ I am chosing the wine quality dataset for my analysis.
 ```{r message=FALSE, warning=FALSE}
 wine_red <- read_delim('winequality-red.csv',delim = ';') %>% 
                     mutate(quality=factor(ifelse(quality>5,1,0),labels = c('low','high')))
+names(wine_red)<-make.names(names(wine_red),unique = TRUE)
 ```
 
 
@@ -72,7 +76,7 @@ ggplot(
 ```{r}
 ggplot(
   data = wine_red,
-  aes(x=`total sulfur dioxide`,fill=quality)
+  aes(x=total.sulfur.dioxide,fill=quality)
 ) + geom_histogram(position = 'dodge',bins = 30) +
   ggtitle("Histogram of Wine Quality by Total Sulfur Dioxide") +
   xlab("Total Sulfur Dioxide")
@@ -83,7 +87,7 @@ ggplot(
 ```{r}
 ggplot(
   data = wine_red,
-  aes(x=`total sulfur dioxide`,y=alcohol,color=quality)
+  aes(x=total.sulfur.dioxide,y=alcohol,color=quality)
 ) + geom_point(alpha=.5) +
   ggtitle("Histogram of Wine Quality by Total Sulfur Dioxide") +
   xlab("Total Sulfur Dioxide")+
@@ -103,21 +107,233 @@ ggplot(
 * Deliverables:
   + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
   + Your bullet points should give a brief explanation of the algorithm and comment on the variables retained/removed from the model. Are the results intuitive?
+
+### Create Binary Response Variable 
+
+```{r}
+wine_red <- wine_red %>% 
+               mutate(quality=ifelse(quality=='high',1,0))
+```
+
+  
+### Create Saturated Model
+
+```{r}
+saturated_model <- glm(quality~.,family=binomial,data=wine_red)
+```
+
+### Use step() to select paired down model
+
+```{r}
+aic_step <- step(saturated_model)
+```
+
+### Final Model Selected by step()
+
+```{r}
+formula(aic_step)
+```
+
+
+### Comments on Variables Selected:
+
+* How the algorithm works:
+  + Step starts with the saturated model and decides iteratively which variables it can remove
+  + At each step it computes the AIC for a model with each single predictor removed as well as one for no predictors removed
+  + If the model with a predictor removed gives a better AIC than one with no predictor removed step removes the predictor that gives the lowest AIC model it repeats this process until the model reaches a number of predictors where removing no predictor gives the lowest AIC
+* Results: 
+  + The results show that pH, residual sugar and density are not good predictors of quality with red wine. 
+  + Also during the step process the removal of pH caused the fixed acidity variable to contribute more and become a relevant predictor since those variables are highly related.
+  + Both of the variables I selected during my EDA section were relevant predictors and remained in the model
   
 ## Step 3: Assess Model Fit
 
-* Task: Perform variable selection via the AIC using the step() function. Your starting model should include all available predictors. The reduced model should be used as your final model for all subsequent steps. Or, if you disagree with the recommended model, you need to indicate why.
+* Task: Check that continuous predictors have a linear relation with the logit using loess plots and perform the Hosmer-Lemeshow (HL) goodness of fit test. If the loess plot is nonlinear, then splines should be used to account for the nonlinearity.
 
 * Deliverables:
   + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
-  + Your bullet points should give a brief explanation of the algorithm and comment on the variables retained/removed from the model. Are the results intuitive?
+  + Your bullet points should explain the axes of the loess plot, the conclusion of the loess plot, the basic concepts of the HL test, and its result. If the HL test reveals poor fit, this should be discussed.
+
+### Loess Plot
+
+```{r}
+loess_plot <- function(column_name){
+  f <- as.formula(paste("quality", column_name, sep = " ~ "))
+  y_smooth <- predict(loess(f, data=wine_red))
+  zero_one <- which(y_smooth>0 & y_smooth<1)
+
+  plot(jitter(wine_red[[column_name]])[zero_one],log(y_smooth[zero_one]/(1-y_smooth[zero_one])),
+       xlab = column_name)
+}
+```
 
 
+#### Alcohol 
+```{r}
+loess_plot('alcohol')
+```
+
+The lowess plot for Alcohol clearly shows around 2 splines around 9.5% and 12.5%
+  
+#### Volatile Acidity 
+```{r}
+loess_plot('volatile.acidity')
+```
+
+The lowess plot for Volatile Acidity does not show a strong need for splines
+
+#### Sulphates 
+```{r}
+loess_plot('sulphates')
+```
+
+The lowess plot for Sulphates shows a clear need for a spline around 1 
+
+#### Total Sulfur Dioxide 
+```{r}
+loess_plot('total.sulfur.dioxide')
+```
+
+The lowess plot for Total Sulfur Dioxide shows a potential spline around 40 is needed 
+
+#### Free Sulfur Dioxide
+```{r}
+loess_plot('free.sulfur.dioxide')
+```
+
+The lowess plot for Free Sulfur Dioxide shows splines around 10 and 15 could improve the model
+
+#### Fixed Acidity 
+```{r}
+loess_plot('fixed.acidity')
+```
+
+The lowess plot for Fixed Acidity shows that splines around 8 and 12 are needed 
+
+#### Chlorides 
+```{r}
+loess_plot('chlorides')
+```
+
+The lowess plot for Chlorides shows a spline around .09 should be added
+
+#### Citric Acid 
+```{r}
+loess_plot('citric.acid')
+```
+
+The lowess plot for Citric Acid shows that splines around .2 and .5 should be added 
+
+### Adding Splines
+
+```{r}
+spline_formula <- formula(quality~ns(citric.acid,4)+
+                                  ns(chlorides,2)+
+                                  ns(fixed.acidity,2)+
+                                  ns(free.sulfur.dioxide,4)+
+                                  ns(total.sulfur.dioxide,3)+
+                                  ns(sulphates,4)+
+                                  volatile.acidity+
+                                  ns(alcohol,4))
+step_with_splines_model <- glm(spline_formula,family=binomial,data=wine_red)
+```
 
 
+### Hosmer-Lemeshow Goodness of Fit Test
+
+#### Model without Splines 
+```{r}
+hl_test <- hoslem.test(wine_red$quality,aic_step$fitted.values,10)
+hl_test
+```
+
+#### Model with Splines 
+```{r}
+hl_test <- hoslem.test(wine_red$quality,step_with_splines_model$fitted.values,10)
+hl_test
+```
+
+### Comments on Loess Plot and HL GoF Test:
+
+* Most of the Loess Plots show that the predictors are nonlinear except Volatile Acidity and thus splines need to be used to create multiple regression lines for each of the remaining predictors in the model. Another choice could be to select a model like a decision tree or neural network that can model features with nonlinear behaviors
+
+* HL Tests
+  + The HL test on the model fit with the step() function shows that the model fit is not adequate. This is likely due to the fact that the predictors are mostly non-linear.
+  + After adding splines the model fit shows that it is adequate
+
+## Step 4: Model Inferences
+
+* Task: Report p-values and confidence intervals for significant predictors and check for influential observations. Any influential observations should be removed and the model should be refit. Note any changes in the inferences due to the removal.
+
+* Deliverables:
+  + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
+  + Your bullet points should give practical interpretation of the inferences and explain the process of checking for influential observations.
+
+```{r}
+summary(step_with_splines_model)
+```
 
 
+### Comments on Inferences and Influential Observations:
 
+## 5: Asses Predictive Power
 
+* Task: Summarize predictive/discriminatory power of the model with an ROC curve and plots of predicted probabilities.
+
+* Deliverables:
+  + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
+  + Your bullet points should give a brief explanation of each plot and the
+interpretation for your model.
+
+### Plot ROC Curve
+```{r}
+pred <- prediction(step_with_splines_model$fitted.values, wine_red$quality)
+perf <- performance(pred, measure = "tpr", x.measure = "fpr") 
+plot(perf, col=rainbow(10), main="ROC Curve")
+```
+
+### Determine AUC
+
+```{r}
+auc.tmp <- performance(pred,"auc"); 
+auc <- as.numeric(auc.tmp@y.values)
+cat(paste("The AUC for my selected model is:",round(auc,3)))
+```
+
+### Plot Predicted Probabilities by Predictor
+
+```{r}
+plot(wine_red$fixed.acidity,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$volatile.acidity,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$citric.acid,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$chlorides,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$free.sulfur.dioxide,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$total.sulfur.dioxide,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$sulphates,step_with_splines_model$fitted.values)
+```
+
+```{r}
+plot(wine_red$alcohol,step_with_splines_model$fitted.values)
+```
+
+### Comments on Plots and Model Interpretation:
 
 
