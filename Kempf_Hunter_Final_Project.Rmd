@@ -7,10 +7,12 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = '/Users/hunterkempf/Documents/GitHub/Final_Project_GLM')
+#knitr::opts_knit$set(root.dir = '/Users/hunterkempf/Documents/GitHub/Final_Project_GLM')
+knitr::opts_knit$set(root.dir = '/Users/hk720x/Documents/GitHub/Final_Project_GLM/')
+
 ```
 
-# Introduction
+# Directions
 The semester project gives you the chance to apply the knowledge and skills you will learn in the course in a way that mimics the ways you can expect to use logistic regression modeling in a real-world setting.
 
 For the project, you will choose one data set from the two listed below and perform a logistic regression analysis. Specifically, you will build a regression model and report on the model statistics and diagnostics. Your final deliverable for the project will be an R Markdown file. The file will contain the analyses detailed in each step with 5-7 written bullet points. Basically, pretend you are presenting to a non-technical audience, and the bullet points would serve as a script outline for your explanation. By non-technical I mean an audience who knows things like “a p-value less than 0.05 mean statistical significance” but cannot really explain the underlying concepts in great detail.
@@ -26,6 +28,7 @@ explain what factors are related to a high rating.
 * diabetes: the help file for the data states that glycosolated hemoglobin (denoted
 as glyhbin the data) greater than 7.0 is usually taken as a positive diagnosis of diabetes. Thus, collapse glyhb into a binary response equal to 1 if gly > 7 (positive) and 0 if gly <= 7 (negative). Build a logistic regression model to explain what factors are related to a positive diagnosis.
 
+
 ## Load Libraries 
 
 ```{r message=FALSE, warning=FALSE}
@@ -38,7 +41,6 @@ library(splines) # <-- for splines
 
 ## Read and Prepare Dataset
 
-I am chosing the wine quality dataset for my analysis.
 
 ```{r message=FALSE, warning=FALSE}
 wine_red <- read_delim('winequality-red.csv',delim = ';') %>% 
@@ -46,6 +48,36 @@ wine_red <- read_delim('winequality-red.csv',delim = ';') %>%
 names(wine_red)<-make.names(names(wine_red),unique = TRUE)
 ```
 
+# Introduction
+
+I am analyzing the red wine dataset for my final project. This dataset was collected in 2009 and includes objective sensor data and a subjective quality measure about Vinho Verde style red wine from Northern Portugal. The data has `r nrow(wine_red)` rows and `r ncol(wine_red)-1` physicochemical predictors and a single quality score from 0-10 which is the median score of at least 3 evaluations collected from wine experts. For simplicity I will be predicting if the score is high (greater than 5) or low (5 or less). The predictors are listed below :
+
+1. fixed acidity (tartaric acid - g / dm^3)
+    + most acids involved with wine or fixed or nonvolatile (do not evaporate readily)
+2. volatile acidity (acetic acid - g / dm^3)
+    + the amount of acetic acid in wine, which at too high of levels can lead to an unpleasant, vinegar taste
+3. citric acid (g / dm^3)
+    + found in small quantities, citric acid can add ‘freshness’ and flavor to wines
+4. residual sugar (g / dm^3)
+    + the amount of sugar remaining after fermentation stops, it’s rare to find wines with less than 1 gram/liter and wines with greater than 45 grams/liter are considered sweet
+5. chlorides (sodium chloride - g / dm^3)
+    +  the amount of salt in the wine
+6. free sulfur dioxide (mg / dm^3)
+    + the free form of SO2 exists in equilibrium between molecular SO2 (as a dissolved gas) and bisulfite ion; it prevents microbial growth and the oxidation of wine
+7. total sulfur dioxide (mg / dm^3)
+    + amount of free and bound forms of S02; in low concentrations, SO2 is mostly undetectable in wine, but at free SO2 concentrations over 50 ppm, SO2 becomes evident in the nose and taste of wine
+8. density (g / cm^3)
+    + the density of wine is close to that of water depending on the percent alcohol and sugar content
+9. pH
+    + describes how acidic or basic a wine is on a scale from 0 (very acidic) to 14 (very basic); most wines are between 3-4 on the pH scale
+10. sulphates (potassium sulphate - g / dm3)
+    + a wine additive which can contribute to sulfur dioxide gas (S02) levels, wich acts as an antimicrobial and antioxidant
+11. alcohol (% by volume)
+    + the percent alcohol content of the wine
+
+[Source for Variable Description](https://rstudio-pubs-static.s3.amazonaws.com/57835_c4ace81da9dc45438ad0c286bcbb4224.html)
+
+These Predictors will be used with Logistic Regression modeling techniques to predict the subjective quality of the wine.
 
 # Project Steps:
 
@@ -82,16 +114,28 @@ ggplot(
   xlab("Total Sulfur Dioxide")
 ```
 
-### Scatterplot of Alcohol Percentage and Total Sulfur Dioxide
+### Scatterplot of Alcohol Percentage and Quality
 
 ```{r}
 ggplot(
   data = wine_red,
-  aes(x=total.sulfur.dioxide,y=alcohol,color=quality)
-) + geom_point(alpha=.5) +
-  ggtitle("Histogram of Wine Quality by Total Sulfur Dioxide") +
+  aes(x=total.sulfur.dioxide,y=quality,color=quality)
+) + geom_jitter(alpha=.5) +
+  ggtitle("Scatterplot of Wine Quality by Total Sulfur Dioxide") +
   xlab("Total Sulfur Dioxide")+
-  ylab("Alcohol %")
+  ylab("Quality")
+```
+
+### Scatterplot of Total Sulfur Dioxide and Quality
+
+```{r}
+ggplot(
+  data = wine_red,
+  aes(x=alcohol,y=quality,color=quality)
+) + geom_jitter(alpha=.5) +
+  ggtitle("Scatterplot of Wine Quality by Alcohol %") +
+  xlab("Alcohol %")+
+  ylab("Quality")
 ```
 
 ### Graph Explanations
@@ -389,3 +433,8 @@ plot(wine_red$alcohol,step_with_splines_model$fitted.values)
   + One of the most striking plots is the last one, Alcohol, as alcohol percentage increases generally our model will predict that the wine is of good quality. 
   + Other plots like chlorides generally dont seem to be predictive for most wines but show that deviating off the .1 value generally leads to a wine with a lower predicted value
 
+# Conclusion
+
+I built a model that describes the wine quality well enough. The Spline's added to all but one predictors in the final model were invaluable. The ROC AUC jumped from ~0.17 to ~0.84 due to their addition. Many of the predictors seem to behave with higher order terms which were modeled with splines but it would have been interesting to look at higher order or interaction terms between the variables. There are some other objective predictors I would be interested in adding such as price per bottle, age of the wine, type of grapes used and wine brand information. Sadly all this information is not public with the dataset. I would be interested in getting data about the public's scores for the wines tested and see if those scores generally track the scores that the experts gave each wine. 
+
+A Dataset like this could be used to help predict wines and characteristics of wines that will be successful on the market before any human even tests them. This can help wineries to produce better quality wines that taste better. Also if an individual tasted and scored many of these wines their individual preferences could be encoded into a model that could help them to select similar wines to wines that they have enjoyed before.
