@@ -269,13 +269,57 @@ hl_test
   + Your code in Markdown should show how you used the function, produce the results, and indicate your final model
   + Your bullet points should give practical interpretation of the inferences and explain the process of checking for influential observations.
 
+### Confidence Intervals and p-values
+```{r message=FALSE, warning=FALSE}
+conf_int <- confint(step_with_splines_model) %>% 
+              data.frame() %>%
+              rownames_to_column(var="Predictors")
 
+p.values <- step_with_splines_model%>% 
+              summary() %>%
+              coef()%>% 
+              .[,4] %>% 
+              data.frame()%>%
+              rownames_to_column(var="Predictors") 
+colnames(p.values) <- c("Predictors", "p.values")
+conf_int %>% left_join(p.values)
+```
+
+### Influential Observations
+
+Get Cooks Distances
 ```{r}
-summary(step_with_splines_model)
+CooksDistance <- cooks.distance(step_with_splines_model)
+summary(CooksDistance)
+```
+
+Count Cooks Distances above the suggested threshold of 1
+```{r}
+sum(CooksDistance > 1)
+```
+
+Count Cooks Distances above the other suggested threshold of 4/length(df)
+```{r}
+sum(CooksDistance > 4/length(wine_red))
+```
+
+Plot of the model fitted values (x-axis) versus the Cooks Distance values (y-axis). Any points lying far above the others should be investigated.
+```{r}
+ggplot(
+  data = data.frame(model_fitted_values = step_with_splines_model$fitted.values,
+                    Cooks_Distance = CooksDistance),
+  aes(x = model_fitted_values,y = Cooks_Distance)
+) + geom_point()
 ```
 
 
 ### Comments on Inferences and Influential Observations:
+
+* After Adding splines a fair ammount of the parameters have 95% confidence intervals that include 0. This seems to be an artifact of the splines and per spline there is genrally a parameter with a parameter CI that does not include 0
+
+* Influential Observations:
+  + There are no influential observations by looking at the Cooks Distance with either of the suggested thresholds
+  + A plot of the Cooks Distance and Model Fitted values shows a point with a cooks distance of ~.08 this distance is too small to be influential to the model though
 
 ## 5: Asses Predictive Power
 
@@ -337,4 +381,11 @@ plot(wine_red$alcohol,step_with_splines_model$fitted.values)
 
 ### Comments on Plots and Model Interpretation:
 
+* Analysis of ROC Curve Plot and AUC
+  + The ROC Curve is up and to the left with an AUC of ~.84 which suggests that the model fits the data well and we would classify the model as Excellent using the AUC interpretation shown in class.
+  + The AUC shown here is on the same data that the model was trained on so it may overinflate the predictive power that the model actually has. To understand this more we would have to split the data into training and test sets then calculate the AUC for both.
+
+* Analysis of Plots of Fitted Values by Predictor
+  + One of the most striking plots is the last one, Alcohol, as alcohol percentage increases generally our model will predict that the wine is of good quality. 
+  + Other plots like chlorides generally dont seem to be predictive for most wines but show that deviating off the .1 value generally leads to a wine with a lower predicted value
 
