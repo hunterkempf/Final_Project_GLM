@@ -389,6 +389,15 @@ auc <- as.numeric(auc.tmp@y.values)
 cat(paste("The AUC for my selected model is:",round(auc,3)))
 ```
 
+### Histogram of Fitted Values 
+
+```{r}
+hist(step_with_splines_model$fitted.values,
+     main="Histogram of Model Predicted Values", 
+     xlab="Predicted Values")
+```
+
+
 ### Plot Predicted Probabilities by Predictor
 
 ```{r}
