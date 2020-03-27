@@ -392,9 +392,8 @@ cat(paste("The AUC for my selected model is:",round(auc,3)))
 ### Histogram of Fitted Values 
 
 ```{r}
-hist(step_with_splines_model$fitted.values,
-     main="Histogram of Model Predicted Values", 
-     xlab="Predicted Values")
+hist(step_with_splines_model$fitted.values[wine_red$quality==0],main="Low Quality (quality=0)",breaks=20)
+hist(step_with_splines_model$fitted.values[wine_red$quality==1],main="High Quality(quality=1)",breaks=20)
 ```
 
 
@@ -437,6 +436,9 @@ plot(wine_red$alcohol,step_with_splines_model$fitted.values)
 * Analysis of ROC Curve Plot and AUC
   + The ROC Curve is up and to the left with an AUC of ~.84 which suggests that the model fits the data well and we would classify the model as Excellent using the AUC interpretation shown in class.
   + The AUC shown here is on the same data that the model was trained on so it may overinflate the predictive power that the model actually has. To understand this more we would have to split the data into training and test sets then calculate the AUC for both.
+
+* Analysis of Histogram's of Fitted Values By Quality
+  + Both Plots look good since they generally have more fitted values close to the correct value and slope down as they approach the wrong value
 
 * Analysis of Plots of Fitted Values by Predictor
   + One of the most striking plots is the last one, Alcohol, as alcohol percentage increases generally our model will predict that the wine is of good quality. 
